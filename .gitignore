@@ -1,0 +1,33 @@
+# Build artifacts
+build/
+*.o
+*.bin
+*.map
+*.lst
+
+# CC65 specific
+*.s
+*.prg
+
+# IDE files
+.vscode/
+*.suo
+*.user
+
+# OS specific
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files
+*~
+*.tmp
+*.temp
+
+# Log files
+*.log
+
+# Package files
+*.zip
+*.tar.gz
+*.7z
