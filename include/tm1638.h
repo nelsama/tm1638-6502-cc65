@@ -28,6 +28,12 @@
 #define PORT_SALIDA         (*(volatile uint8_t*)0xC000)
 #endif
 
+#ifndef CONF_PORT_SALIDA
+#define CONF_PORT_SALIDA    (*(volatile uint8_t*)0xC002)
+#endif
+
+
+
 // Parámetro de timing para delays del TM1638
 #define timing_delay 0
 
