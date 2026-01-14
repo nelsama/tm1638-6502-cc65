@@ -12,7 +12,7 @@
  * - Lectura de teclado de 16 teclas con mapeo específico para QYF-TM1638
  * - Funciones utilitarias para limpieza y control
  *
- * @author Your Name
+ * @author Nelson Figueroa
  * @date 2025
  */
 #include "../include/tm1638.h"

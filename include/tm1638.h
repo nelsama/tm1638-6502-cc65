@@ -11,7 +11,7 @@
  *   - Lectura de teclado con mapeo específico para QYF-TM1638
  *   - Funciones de utilidad para limpieza y control
  *
- * @author Your Name
+ * @author Nelson Figueroa
  * @date 2025
  */
 #ifndef TM1638_H
