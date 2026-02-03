@@ -7,6 +7,43 @@
 [![C89](https://img.shields.io/badge/Standard-C89-orange.svg)](https://en.wikipedia.org/wiki/ANSI_C)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+## 🧩 Acerca del dispositivo TM1638
+
+El **TM1638** es un controlador integrado de LED + teclado muy usado en proyectos embebidos. El módulo más común es el **QYF-TM1638**, que combina:
+
+- **Display de 8 dígitos (7 segmentos)** para números y algunos caracteres
+- **16 botones** en matriz 4×4 para entrada de datos
+- **8 LEDs de estado** para indicadores
+- **Interfaz serial de 3 líneas** (STB/CLK/DIO)
+- **Bajo consumo** y gran disponibilidad
+
+Esta librería está pensada para ese tipo de módulos “8 dígitos + 16 botones”.
+
+![TM1638 Display Module](docs/images/tm1638-7.png)
+
+### 🛒 Dónde conseguir el módulo TM1638
+
+El TM1638 es económico y muy común en tiendas en línea. Lugares típicos:
+
+- **AliExpress**: buscar “TM1638” o “QYF TM1638” (precio típico 2–5 USD)
+- **eBay**: “TM1638 module” con precios similares
+- **Banggood**: buena disponibilidad y precios competitivos
+- **Amazon**: disponible, pero suele ser más caro
+
+**Recomendaciones:**
+- Asegúrate de que sea el modelo **8 dígitos + 16 botones**
+- Los módulos de 8 dígitos sin botones **no** funcionan con esta librería
+
+## 🔌 Configuración por defecto (puerto y pines)
+
+Por defecto, la librería asume que el TM1638 está conectado al **puerto 0xC000** con el siguiente mapeo de pines:
+
+- **Bit 0 → CLK (Clock)**
+- **Bit 1 → DIO (Data I/O)**
+- **Bit 2 → STB (Strobe/Chip Select)**
+
+Si tu hardware usa otro puerto o bits diferentes, revisa los `#define` correspondientes en `tm1638.h` y ajústalos a tu placa.
+
 ## 🚀 Instalación Rápida (3 pasos)
 
 ### 1️⃣ Descargar Librería
