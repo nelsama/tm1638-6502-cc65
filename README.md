@@ -226,6 +226,12 @@ make install DEST_DIR=C:\tu_proyecto_6502
 4. Documentar cambios
 5. Pull request con tests
 
+## 💖 Apóyame
+
+Si disfrutas de este proyecto, considera apoyarme:
+
+[![Support me on Ko-fi](https://img.shields.io/badge/Ko--fi-Apóyame-FF5E5B?logo=kofi&logoColor=white&style=for-the-badge)](https://ko-fi.com/nelsonfigueroa2k)
+
 ---
 
 **TM1638 v2.0** - La librería más completa y profesional para 6502 🚀
