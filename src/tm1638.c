@@ -164,63 +164,120 @@ void tm1638_encode_hex(const uint8_t* digits, uint8_t* segments, uint8_t digits_
     }
 }
 
+/* Tabla compartida de conversi\x00f3n ASCII a 7-segmentos */
+static const uint8_t ascii_to_7seg[128] = {
+    /* Caracteres de control (0-31): no representables */
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+
+    /* Caracteres imprimibles (32-126) */
+    0x00, /* 32: (espacio) */  0x40, /* 33: ! */      0x22, /* 34: " */      0x00, /* 35: # */
+    0x6D, /* 36: $ */         0x00, /* 37: % */      0x00, /* 38: & */      0x02, /* 39: ' */
+    0x24, /* 40: ( */         0x2C, /* 41: ) */      0x00, /* 42: * */      0x38, /* 43: + */
+    0x08, /* 44: , */         0x40, /* 45: - */      0x80, /* 46: . */      0x41, /* 47: / */
+    0x3F, /* 48: 0 */         0x06, /* 49: 1 */      0x5B, /* 50: 2 */      0x4F, /* 51: 3 */
+    0x66, /* 52: 4 */         0x6D, /* 53: 5 */      0x7D, /* 54: 6 */      0x07, /* 55: 7 */
+    0x7F, /* 56: 8 */         0x6F, /* 57: 9 */      0x48, /* 58: : */      0x48, /* 59: ; */
+    0x30, /* 60: < */         0x48, /* 61: = */      0x24, /* 62: > */      0x53, /* 63: ? */
+    0x5F, /* 64: @ */         0x77, /* 65: A */      0x7C, /* 66: b */      0x39, /* 67: C */
+    0x5E, /* 68: d */         0x79, /* 69: E */      0x71, /* 70: F */      0x3D, /* 71: G */
+    0x76, /* 72: H */         0x06, /* 73: I */      0x0E, /* 74: J */      0x00, /* 75: K */
+    0x38, /* 76: L */         0x37, /* 77: M */      0x37, /* 78: N */      0x3F, /* 79: O */
+    0x73, /* 80: P */         0x67, /* 81: q */      0x73, /* 82: R */      0x6D, /* 83: S */
+    0x78, /* 84: t */         0x3E, /* 85: U */      0x00, /* 86: V */      0x00, /* 87: W */
+    0x00, /* 88: X */         0x6E, /* 89: Y */      0x5B, /* 90: Z */      0x39, /* 91: [ */
+    0x41, /* 92: \\ */         0x0F, /* 93: ] */      0x50, /* 94: ^ */      0x08, /* 95: _ */
+    0x04, /* 96: ` */         0x77, /* 97: a */      0x7C, /* 98: b */      0x58, /* 99: c */
+    0x5E, /* 100: d */        0x7B, /* 101: e */     0x71, /* 102: f */     0x6F, /* 103: g */
+    0x74, /* 104: h */        0x04, /* 105: i */     0x0E, /* 106: j */     0x00, /* 107: k */
+    0x30, /* 108: l */        0x00, /* 109: m */     0x54, /* 110: n */     0x5C, /* 111: o */
+    0x73, /* 112: p */        0x67, /* 113: q */     0x50, /* 114: r */     0x6D, /* 115: s */
+    0x78, /* 116: t */        0x1C, /* 117: u */     0x00, /* 118: v */     0x00, /* 119: w */
+    0x00, /* 120: x */        0x6E, /* 121: y */     0x5B, /* 122: z */     0x24, /* 123: { */
+    0x06, /* 124: | */        0x2C, /* 125: } */     0x40  /* 126: ~ */
+};
+
 /**
  * @brief Codifica string ASCII a formato 7-segmentos
+ *
+ * El punto decimal ('.') se fusiona con el d\x00gito anterior (estilo calculadora).
+ * "1.2" ocupa 2 displays en vez de 3: el DP se ORnea al segmento del '1'.
+ *
  * @param chars String ASCII de entrada
- * @param segments Array de salida con códigos 7-segmentos
- * @param digits_len Número de caracteres a codificar
+ * @param segments Array de salida con c\x00digos 7-segmentos
+ * @param digits_len N\x00mero de caracteres a codificar
  */
 void tm1638_encode_ascii(const char* chars, uint8_t* segments, uint8_t digits_len) {
     /* Variables C89 al inicio */
     uint8_t i;
     uint8_t src_index;
     uint8_t char_code;
+    uint8_t dp_flag;
+    uint8_t seg_idx;
     
-    /* Tabla optimizada - solo caracteres comunes para ahorrar memoria */
-    static const uint8_t ascii_to_7seg[128] = {
-        /* Caracteres de control (0-31): no representables */
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    dp_flag = 0;
+    seg_idx = 0;
 
-        /* Caracteres imprimibles (32-126) */
-        0x00, /* 32: (espacio) */  0x40, /* 33: ! */      0x22, /* 34: " */      0x00, /* 35: # */
-        0x6D, /* 36: $ */         0x00, /* 37: % */      0x00, /* 38: & */      0x02, /* 39: ' */
-        0x24, /* 40: ( */         0x2C, /* 41: ) */      0x00, /* 42: * */      0x38, /* 43: + */
-        0x08, /* 44: , */         0x40, /* 45: - */      0x80, /* 46: . */      0x41, /* 47: / */
-        0x3F, /* 48: 0 */         0x06, /* 49: 1 */      0x5B, /* 50: 2 */      0x4F, /* 51: 3 */
-        0x66, /* 52: 4 */         0x6D, /* 53: 5 */      0x7D, /* 54: 6 */      0x07, /* 55: 7 */
-        0x7F, /* 56: 8 */         0x6F, /* 57: 9 */      0x48, /* 58: : */      0x48, /* 59: ; */
-        0x30, /* 60: < */         0x48, /* 61: = */      0x24, /* 62: > */      0x53, /* 63: ? */
-        0x5F, /* 64: @ */         0x77, /* 65: A */      0x7C, /* 66: b */      0x39, /* 67: C */
-        0x5E, /* 68: d */         0x79, /* 69: E */      0x71, /* 70: F */      0x3D, /* 71: G */
-        0x76, /* 72: H */         0x06, /* 73: I */      0x0E, /* 74: J */      0x00, /* 75: K */
-        0x38, /* 76: L */         0x37, /* 77: M */      0x37, /* 78: N */      0x3F, /* 79: O */
-        0x73, /* 80: P */         0x67, /* 81: q */      0x73, /* 82: R */      0x6D, /* 83: S */
-        0x78, /* 84: t */         0x3E, /* 85: U */      0x00, /* 86: V */      0x00, /* 87: W */
-        0x00, /* 88: X */         0x6E, /* 89: Y */      0x5B, /* 90: Z */      0x39, /* 91: [ */
-        0x41, /* 92: \ */         0x0F, /* 93: ] */      0x50, /* 94: ^ */      0x08, /* 95: _ */
-        0x04, /* 96: ` */         0x77, /* 97: a */      0x7C, /* 98: b */      0x58, /* 99: c */
-        0x5E, /* 100: d */        0x7B, /* 101: e */     0x71, /* 102: f */     0x6F, /* 103: g */
-        0x74, /* 104: h */        0x04, /* 105: i */     0x0E, /* 106: j */     0x00, /* 107: k */
-        0x30, /* 108: l */        0x00, /* 109: m */     0x54, /* 110: n */     0x5C, /* 111: o */
-        0x73, /* 112: p */        0x67, /* 113: q */     0x50, /* 114: r */     0x6D, /* 115: s */
-        0x78, /* 116: t */        0x1C, /* 117: u */     0x00, /* 118: v */     0x00, /* 119: w */
-        0x00, /* 120: x */        0x6E, /* 121: y */     0x5B, /* 122: z */     0x24, /* 123: { */
-        0x06, /* 124: | */        0x2C, /* 125: } */     0x40  /* 126: ~ */
-    };
-
-    /* Bucle optimizado - precalcula índice y elimina aritmética repetitiva */
     for (i = 0; i < digits_len; i++) {
-        src_index = digits_len - 1 - i;  /* Calcular una sola vez */
-        char_code = (uint8_t)chars[src_index];  /* Cast explícito */
+        src_index = digits_len - 1 - i;
+        char_code = (uint8_t)chars[src_index];
         
-        /* Verificación de bounds optimizada */
-        if (char_code > 126) {
-            segments[i] = 0x00;  /* Caracter no válido */
+        if (char_code == '.') {
+            /* El punto no ocupa posici\x00f3n: activamos flag para el d\x00edgito anterior */
+            dp_flag = 1;
         } else {
-            segments[i] = ascii_to_7seg[char_code];  /* Acceso directo */
+            /* Caracter normal */
+            if (char_code > 126) {
+                segments[seg_idx] = 0x00;
+            } else {
+                segments[seg_idx] = ascii_to_7seg[char_code];
+            }
+            
+            /* Si ven\x00eda un punto antes, ORneamos el bit DP al d\x00edgito actual */
+            if (dp_flag) {
+                segments[seg_idx] |= 0x80;
+                dp_flag = 0;
+            }
+            
+            seg_idx++;
+        }
+    }
+    
+    /* Rellenar posiciones restantes con 0x00 */
+    while (seg_idx < digits_len) {
+        segments[seg_idx] = 0x00;
+        seg_idx++;
+    }
+}
+
+/**
+ * @brief Codifica string ASCII a formato 7-segmentos (modo raw)
+ *
+ * Versi\x00f3n con el comportamiento original: el punto decimal ('.') ocupa
+ * su propio display completo como segmento DP individual, en vez de
+ * fusionarse con el d\x00edgito anterior.
+ *
+ * @param chars String ASCII de entrada
+ * @param segments Array de salida con c\x00digos 7-segmentos
+ * @param digits_len N\x00mero de caracteres a codificar
+ */
+void tm1638_encode_ascii_raw(const char* chars, uint8_t* segments, uint8_t digits_len) {
+    /* Variables C89 al inicio */
+    uint8_t i;
+    uint8_t src_index;
+    uint8_t char_code;
+    
+    /* Bucle original: cada caracter ocupa su propia posici\x00f3n */
+    for (i = 0; i < digits_len; i++) {
+        src_index = digits_len - 1 - i;
+        char_code = (uint8_t)chars[src_index];
+        
+        if (char_code > 126) {
+            segments[i] = 0x00;
+        } else {
+            segments[i] = ascii_to_7seg[char_code];
         }
     }
 }
@@ -286,6 +343,18 @@ void tm1638_encode_ascii8(const char* chars, uint8_t* segments) {
 }
 
 /**
+ * @brief Codifica string ASCII a 7-segmentos en modo raw (8 caracteres autom\x00e1tico)
+ *
+ * El punto decimal ocupa su propio display completo (comportamiento original).
+ *
+ * @param chars String ASCII de 8 caracteres
+ * @param segments Array de salida con 8 c\x00f3digos 7-segmentos
+ */
+void tm1638_encode_ascii_raw8(const char* chars, uint8_t* segments) {
+    tm1638_encode_ascii_raw(chars, segments, 8);
+}
+
+/**
  * @brief Mapea datos de segmentos a formato grid para display (8 dígitos automático)
  * @param digits Array con 8 datos de segmentos
  * @param grids Array de salida con 8 datos de grid
@@ -308,7 +377,23 @@ void tm1638_show_text(const char* text) {
 }
 
 /**
- * @brief Función todo-en-uno: codifica hex y lo muestra directamente
+ * @brief Funci\x00f3n todo-en-uno: muestra texto ASCII en modo raw
+ *
+ * Con esta funci\x00f3n el punto decimal ocupa su propio display completo
+ * (comportamiento original), en lugar de fusionarse con el d\x00edgito anterior.
+ * @param text String ASCII de 8 caracteres a mostrar
+ */
+void tm1638_show_text_raw(const char* text) {
+    uint8_t segments[8];
+    uint8_t grids[8];
+    
+    tm1638_encode_ascii_raw8(text, segments);
+    tm1638_digits_common_anode8(segments, grids);
+    tm1638_display(grids);
+}
+
+/**
+ * @brief Funci\x00f3n todo-en-uno: codifica hex y lo muestra directamente
  * @param hex_digits Array de 8 dígitos hex (0x0-0xF) a mostrar
  */
 void tm1638_show_hex(const uint8_t* hex_digits) {

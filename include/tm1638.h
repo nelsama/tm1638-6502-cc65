@@ -48,16 +48,19 @@ void tm1638_init(void);
 // Funciones de codificación (versión completa con longitud personalizable)
 void tm1638_encode_hex(const uint8_t* digits, uint8_t* segments, uint8_t digits_len);
 void tm1638_encode_ascii(const char* chars, uint8_t* segments, uint8_t digits_len);
+void tm1638_encode_ascii_raw(const char* chars, uint8_t* segments, uint8_t digits_len);
 void tm1638_digits_common_anode(const uint8_t* digits, uint8_t* grids, uint8_t digits_len);
 
 // Funciones de codificación simplificadas (asumen 8 dígitos automáticamente)
 void tm1638_encode_hex8(const uint8_t* digits, uint8_t* segments);
 void tm1638_encode_ascii8(const char* chars, uint8_t* segments);
+void tm1638_encode_ascii_raw8(const char* chars, uint8_t* segments);
 void tm1638_number_to_segments8(uint32_t number, uint8_t* segments);
 void tm1638_digits_common_anode8(const uint8_t* digits, uint8_t* grids);
 
 // Funciones súper simplificadas (todo-en-uno)
 void tm1638_show_text(const char* text);
+void tm1638_show_text_raw(const char* text);
 void tm1638_show_hex(const uint8_t* hex_digits);
 void tm1638_show_number(uint32_t number);
 
