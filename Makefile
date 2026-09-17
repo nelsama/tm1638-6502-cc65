@@ -14,6 +14,7 @@ INCLUDE_DIR = include
 BUILD_DIR = build
 DOCS_DIR = docs
 EXAMPLES_DIR = examples
+TESTS_DIR = tests
 
 # Archivos fuente
 SOURCES = $(SRC_DIR)/tm1638.c
@@ -44,10 +45,16 @@ examples: $(LIBRARY)
 	@echo "Compilando ejemplos..."
 	@if exist $(EXAMPLES_DIR)\*.c ($(CC) $(CFLAGS) -L $(BUILD_DIR) -l tm1638 $(EXAMPLES_DIR)\*.c -C fpga.cfg -o $(BUILD_DIR)\example.bin) else echo "No hay ejemplos para compilar"
 
+# Ejecutar banco de pruebas bajo sim65 (requiere cc65 con sim65)
+# Uso: make test    o    make test CC65_BIN=/ruta/a/cc65/bin
+test:
+	@sh $(TESTS_DIR)/run_tests.sh
+
 # Limpiar archivos generados
 clean:
 	@echo "Limpiando archivos generados..."
 	@if exist $(BUILD_DIR) rmdir /S /Q $(BUILD_DIR)
+	@if exist $(TESTS_DIR)\*.prg del /Q $(TESTS_DIR)\*.prg
 	@echo "Limpieza completada."
 
 # Mostrar información de la librería
@@ -62,8 +69,9 @@ info:
 	@echo "  - $(EXAMPLES_DIR)/ (ejemplos)"
 	@echo ""
 	@echo "Comandos disponibles:"
-	@echo "  make all      - Compilar librería"
+	@echo "  make all      - Compilar libreria"
 	@echo "  make examples - Compilar ejemplos"
+	@echo "  make test     - Ejecutar banco de pruebas (sim65)"
 	@echo "  make clean    - Limpiar archivos"
 	@echo "  make install  - Instalar en proyecto"
 	@echo "  make info     - Mostrar esta información"
@@ -107,4 +115,4 @@ package: $(LIBRARY)
 	@echo "Paquete creado: $(PKG_NAME)/"
 
 # Targets que no son archivos
-.PHONY: all clean info install examples package
+.PHONY: all clean info install examples test package

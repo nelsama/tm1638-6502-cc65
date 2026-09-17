@@ -46,6 +46,12 @@ void main(void) {
 }
 ```
 
+> **Nota sobre la configuración del puerto:** la línea `CONF_PORT_SALIDA = 0b00000000`
+> asume que el TM1638 usa el puerto en exclusiva. Si compartes ese byte con otras
+> señales (audio, LEDs, etc.), consulta la sección
+> [Puertos compartidos con otras señales](#%EF%B8%8F-puertos-compartidos-con-otras-se%C3%B1ales)
+> para no perturbar las demás patas.
+
 ### Funciones Todo-en-Uno (Más Usadas):
 ```c
 // ==================== INICIALIZACIÓN ====================
@@ -94,6 +100,62 @@ void main(void) {
     /* Tu código aquí... */
 }
 ```
+
+### ⚠️ Puertos compartidos con otras señales
+
+La configuración del puerto depende de si el TM1638 **comparte** su byte con otras señales o lo usa **en exclusiva**. Ambas formas son correctas; elige según tu hardware.
+
+#### Caso 1: el TM1638 usa el puerto en exclusiva
+
+Si el puerto 0xC000 solo conecta al módulo TM1638, asigna el byte completo. Es la forma más simple y clara:
+
+```c
+CONF_PORT_SALIDA = 0b00000000;   /* los 3 bits como salida */
+```
+
+#### Caso 2: el puerto se comparte con otras señales
+
+Si otros bits del mismo puerto van a audio, LEDs, video o cualquier otra función, **asignar el byte completo los pondría a 0**, afectando a esas señales:
+
+```c
+/* ❌ Afecta a las 8 patas del puerto */
+CONF_PORT_SALIDA = 0b00000000;
+
+/* ✅ Modifica solo los bits del TM1638 */
+CONF_PORT_SALIDA &= ~TM1638_PINS_MASK;   /* solo los bits 0-2 del TM1638 */
+```
+
+#### Qué bits controla el driver
+
+Es útil saber exactamente qué escribe la librería en cada registro:
+
+| Registro | Bits que la librería modifica |
+|---|---|
+| `PORT_SALIDA` (datos) | Solo 0, 1 y 2 (CLK/DIO/STB) |
+| `CONF_PORT_SALIDA` (dirección) | Solo el bit 1 (DIO) |
+
+En `PORT_SALIDA`, los bits 3-7 **nunca** se modifican: puedes compartir ese byte con total seguridad, y el display no perturbará las otras señales.
+
+En `CONF_PORT_SALIDA`, la librería solo alterna el bit DIO (porque DIO es bidireccional: entrada para el teclado, salida para escribir). Los bits CLK y STB los configura la aplicación, de ahí la importancia de esa línea.
+
+### 🔇 Reducción de ruido en audio
+
+Si el display inyecta ruido en un parlante, el parámetro `timing_delay` (en `tm1638.h`) controla la rapidez de conmutación de las líneas de control. Con el valor por defecto `0` la conmutación ocurre cada pocos ciclos de CPU, lo que puede acoplarse al audio.
+
+Puedes sobrescribirlo sin modificar la librería:
+
+```c
+/* Opción 1: en el Makefile */
+CFLAGS += -Dtiming_delay=12
+
+/* Opción 2: antes del include */
+#define timing_delay 12
+#include "tm1638.h"
+```
+
+Otras medidas útiles: refrescar el display solo cuando cambie el contenido, apagarlo durante la reproducción de audio, o añadir resistencias en serie en CLK/DIO/STB.
+
+Ver [`PIN_ISOLATION_AND_NOISE.md`](PIN_ISOLATION_AND_NOISE.md) para el análisis completo.
 
 ---
 
@@ -362,9 +424,9 @@ void mostrar_mensaje(char* mensaje) {
 
 void main(void) {
     /* Configuración inicial */
-    CONF_PORT_SALIDA = 0b00000000;
+    CONF_PORT_SALIDA = 0b00000000;        /* puerto exclusivo del TM1638 */
     tm1638_set_brightness(4);
-    
+
     /* Mostrar mensaje */
     mostrar_mensaje("HOLA    ");
     tm1638_delay(8000);
@@ -395,7 +457,7 @@ void main(void) {
     uint16_t contador = 0;
     
     /* Configuración inicial */
-    CONF_PORT_SALIDA = 0b00000000;
+    CONF_PORT_SALIDA = 0b00000000;        /* puerto exclusivo del TM1638 */
     tm1638_set_brightness(5);
     
     while(1) {
@@ -417,9 +479,9 @@ void main(void) {
     char mensaje[9];
     
     /* Configuración inicial */
-    CONF_PORT_SALIDA = 0b00000000;
+    CONF_PORT_SALIDA = 0b00000000;        /* puerto exclusivo del TM1638 */
     tm1638_set_brightness(4);
-    
+
     /* Mostrar mensaje inicial */
     tm1638_encode_ascii("PRESIONA", segments, 8);
     tm1638_digits_common_anode(segments, grids, 8);
@@ -482,8 +544,8 @@ void efecto_brillo(char* mensaje) {
 
 void main(void) {
     /* Configuración inicial */
-    CONF_PORT_SALIDA = 0b00000000;
-    
+    CONF_PORT_SALIDA = 0b00000000;        /* puerto exclusivo del TM1638 */
+
     while(1) {
         efecto_brillo("BRILLO  ");
         tm1638_delay(5000);

@@ -188,8 +188,11 @@ CFLAGS += -I include/              # Debe apuntar donde está tm1638.h
 // Solución: Verificar inicialización
 void main(void) {
     // 1. Configurar puertos ANTES de tm1638_init()
-    CONF_PORT_SALIDA = 0b00000000;    // TM1638 como salida
-    
+    //    (CLK y STB deben quedar como salida; la librería no los configura)
+    CONF_PORT_SALIDA = 0b00000000;    // TM1638 como salida (puerto en exclusiva)
+    // Si compartes el puerto con otras señales, usa:
+    // CONF_PORT_SALIDA &= ~TM1638_PINS_MASK;  // solo los bits 0-2 del TM1638
+
     // 2. Llamar init
     tm1638_init();                    // Esto configura todo
     
@@ -203,6 +206,7 @@ void main(void) {
 - **Documentación**: `docs/MANUAL_TM1638.md`  
 - **Ejemplos**: `examples/basic_example.c` y `advanced_example.c`
 - **Notas técnicas**: `docs/ANTI_GHOSTING_NOTES.md`
+- **Aislamiento de pines y ruido**: `docs/PIN_ISOLATION_AND_NOISE.md`
 
 ---
 

@@ -29,6 +29,11 @@
 #define TM_DIO_MASK  (1 << TM_DIO_BIT)
 #define TM_STB_MASK  (1 << TM_STB_BIT)
 
+/* Máscara de los bits que el driver posee en el puerto de salida.
+   Los bits restantes del puerto pertenecen a la aplicación (audio, video,
+   LEDs, etc.) y NUNCA deben ser modificados por este driver. */
+#define TM_ALL_MASK  (TM_CLK_MASK | TM_DIO_MASK | TM_STB_MASK)
+
 volatile uint8_t tmp_salida;
 static uint8_t current_brightness = 4;  /* Mantener el brillo actual (por defecto 4) */
 
@@ -39,7 +44,31 @@ uint8_t TM_DIO_LOW()   {return (tmp_salida &= ~TM_DIO_MASK);}
 uint8_t TM_STB_HIGH()  {return (tmp_salida |= TM_STB_MASK);}
 uint8_t TM_STB_LOW()   {return (tmp_salida &= ~TM_STB_MASK);}
 
-/* Funciones para configuración dinámica de DIO */
+/**
+ * @brief Vuelca el estado de las 3 líneas de control al puerto de salida.
+ *
+ * Escribe únicamente los bits CLK/DIO/STB. Lee el valor actual del puerto
+ * y reescribe los bits restantes sin alterarlos, de modo que cualquier otra
+ * señal que comparta el puerto mantiene su estado exacto.
+ *
+ * Es equivalente a: PORT_SALIDA = (PORT_SALIDA & ~TM_ALL_MASK) | (tmp_salida & TM_ALL_MASK)
+ */
+void tm1638_apply_output(void) {
+    uint8_t resto;
+
+    resto = (uint8_t)(PORT_SALIDA & (uint8_t)~TM_ALL_MASK);
+    PORT_SALIDA = (uint8_t)(resto | (tmp_salida & TM_ALL_MASK));
+}
+
+/* Funciones para configuración dinámica de DIO.
+ *
+ * Solo se alterna el bit DIO, preservando el resto del registro. DIO es
+ * bidireccional: entrada para leer el teclado, salida para escribir.
+ *
+ * TODO: CLK y STB los configura la aplicación, no la librería. Si no se
+ *       configuran como salida, el display no responde. Sería más robusto
+ *       hacerlo aquí, pero alteraría el binario para apps que los tengan
+ *       como entrada a propósito. Ver el TODO en include/tm1638.h. */
 void TM_DIO_CONFIG_OUTPUT(void) {
     CONF_PORT_SALIDA &= ~TM_DIO_MASK;  /* DIO como salida (0) */
 }
@@ -80,13 +109,15 @@ void tm1638_write_bit(uint8_t bit) {
     /* Configurar DIO como salida antes de escribir */
     TM_DIO_CONFIG_OUTPUT();
     
-    PORT_SALIDA=TM_CLK_LOW();
+    TM_CLK_LOW();
     if (bit)
-        PORT_SALIDA=TM_DIO_HIGH();
+        TM_DIO_HIGH();
     else
-        PORT_SALIDA=TM_DIO_LOW();
+        TM_DIO_LOW();
+    tm1638_apply_output();
     tm1638_delay(timing_delay);
-    PORT_SALIDA=TM_CLK_HIGH();
+    TM_CLK_HIGH();
+    tm1638_apply_output();
     tm1638_delay(timing_delay);
 }
 
@@ -96,12 +127,14 @@ void tm1638_write_bit(uint8_t bit) {
  */
 void tm1638_write_byte(uint8_t data) {
     uint8_t i;
-    PORT_SALIDA=TM_CLK_LOW();
+    TM_CLK_LOW();
+    tm1638_apply_output();
     for (i = 0; i < 8; ++i) {
         tm1638_write_bit(data & 0x01);
         data >>= 1;
     }
-    PORT_SALIDA=TM_CLK_HIGH();
+    TM_CLK_HIGH();
+    tm1638_apply_output();
 }
 
 /**
@@ -114,15 +147,18 @@ uint8_t tm1638_read_byte(void) {
     
     /* Configurar DIO como entrada antes de leer */
     TM_DIO_CONFIG_INPUT();
-    PORT_SALIDA = TM_DIO_HIGH();  /* Pull-up para lectura */
+    TM_DIO_HIGH();                /* Pull-up para lectura */
+    tm1638_apply_output();
     
     for (i = 0; i < 8; i++) {
         /* Pulso de reloj bajo */
-        PORT_SALIDA = TM_CLK_LOW();
+        TM_CLK_LOW();
+        tm1638_apply_output();
         tm1638_delay(timing_delay);
         
         /* Leer bit en flanco de subida */
-        PORT_SALIDA = TM_CLK_HIGH();
+        TM_CLK_HIGH();
+        tm1638_apply_output();
         tm1638_delay(timing_delay);
         
         /* Leer el estado del puerto y extraer el bit DIO */
@@ -139,7 +175,8 @@ uint8_t tm1638_read_byte(void) {
  * @param cmd Comando a enviar
  */
 void tm1638_send_cmd(uint8_t cmd) {
-    PORT_SALIDA=TM_CLK_HIGH();
+    TM_CLK_HIGH();
+    tm1638_apply_output();
     tm1638_delay(timing_delay);
     tm1638_write_byte(cmd);
 }
@@ -472,18 +509,21 @@ void tm1638_display(const uint8_t* disps) {
 
     /* Inicialización optimizada de líneas de control */
     tmp_salida |= (TM_CLK_MASK | TM_STB_MASK);  /* CLK y STB HIGH simultáneamente */
-    PORT_SALIDA = tmp_salida;
+    tm1638_apply_output();
     tm1638_delay(timing_delay);
 
     /* Comando auto-increment */
-    PORT_SALIDA = TM_STB_LOW();
+    TM_STB_LOW();
+    tm1638_apply_output();
     tm1638_delay(timing_delay);
     tm1638_send_cmd(0x40);
-    PORT_SALIDA = TM_STB_HIGH();
+    TM_STB_HIGH();
+    tm1638_apply_output();
     tm1638_delay(timing_delay);
     
     /* Comando dirección inicial */
-    PORT_SALIDA = TM_STB_LOW();
+    TM_STB_LOW();
+    tm1638_apply_output();
     tm1638_send_cmd(0xC0);
 
     /* Bucle optimizado - elimina branches y reduce accesos al array */
@@ -494,7 +534,8 @@ void tm1638_display(const uint8_t* disps) {
     }
 
     /* Activación final del display */
-    PORT_SALIDA = TM_STB_HIGH();
+    TM_STB_HIGH();
+    tm1638_apply_output();
     tm1638_delay(timing_delay);
     
     /* NO cambiar brillo - respetar configuración actual */
@@ -512,26 +553,31 @@ void tm1638_clear_display(void) {
     uint8_t i;
 
     /* Paso 1: Temporalmente apagar el display para evitar glitches */
-    PORT_SALIDA = TM_STB_LOW();
+    TM_STB_LOW();
+    tm1638_apply_output();
     tm1638_send_cmd(0x80);  /* Display OFF */
-    PORT_SALIDA = TM_STB_HIGH();
+    TM_STB_HIGH();
+    tm1638_apply_output();
     tm1638_delay(timing_delay * 5);  /* Delay extra para estabilizar */
     
 
     /* Inicialización de líneas de control */
     tmp_salida |= (TM_CLK_MASK | TM_STB_MASK);
-    PORT_SALIDA = tmp_salida;
+    tm1638_apply_output();
     tm1638_delay(timing_delay);
 
     /* Comando auto-increment para escribir desde dirección 0xC0 */
-    PORT_SALIDA = TM_STB_LOW();
+    TM_STB_LOW();
+    tm1638_apply_output();
     tm1638_delay(timing_delay);
     tm1638_send_cmd(0x40);  /* Auto-increment mode */
-    PORT_SALIDA = TM_STB_HIGH();
+    TM_STB_HIGH();
+    tm1638_apply_output();
     tm1638_delay(timing_delay);
         
     /* Comando dirección inicial 0xC0 */
-    PORT_SALIDA = TM_STB_LOW();
+    TM_STB_LOW();
+    tm1638_apply_output();
     tm1638_send_cmd(0xC0);  /* Address 0xC0 */
 
     /* Escribir 16 bytes de ceros (8 dígitos + 8 LEDs) */
@@ -540,14 +586,17 @@ void tm1638_clear_display(void) {
     }
 
     /* Finalizar comunicación */
-    PORT_SALIDA = TM_STB_HIGH();
+    TM_STB_HIGH();
+    tm1638_apply_output();
     tm1638_delay(timing_delay * 2);  /* Delay extra entre pasadas */
 
     
     /* Paso 3: Reencender display limpio manteniendo brillo actual */
-    PORT_SALIDA = TM_STB_LOW();
+    TM_STB_LOW();
+    tm1638_apply_output();
     tm1638_send_cmd(0x88 + current_brightness);  /* Display ON con brillo actual */
-    PORT_SALIDA = TM_STB_HIGH();
+    TM_STB_HIGH();
+    tm1638_apply_output();
     tm1638_delay(timing_delay * 3);
 }
 
@@ -562,30 +611,37 @@ void tm1638_clear_display(void) {
 void tm1638_init(void) {
     uint8_t i;
     
-    /* Paso 1: Resetear líneas de control */
-    tmp_salida = 0x00;
-    PORT_SALIDA = tmp_salida;
+    /* Paso 1: Resetear líneas de control.
+       Solo se tocan los bits del driver: el resto del puerto se conserva,
+       de modo que no se perturban otras señales que compartan el puerto. */
+    tmp_salida = (uint8_t)(tmp_salida & TM_ALL_MASK);  /* solo CLK/DIO/STB a 0 */
+    tm1638_apply_output();
     tm1638_delay(timing_delay * 10);  /* Delay largo para reset */
     
     /* Paso 2: Inicializar líneas de control correctamente */
     tmp_salida |= (TM_CLK_MASK | TM_STB_MASK);
-    PORT_SALIDA = tmp_salida;
+    tm1638_apply_output();
     tm1638_delay(timing_delay * 5);
     
     /* Paso 3: Secuencia de inicialización del TM1638 */
-    PORT_SALIDA = TM_STB_LOW();
+    TM_STB_LOW();
+    tm1638_apply_output();
     tm1638_send_cmd(0x80);  /* Display OFF para configuración limpia */
-    PORT_SALIDA = TM_STB_HIGH();
+    TM_STB_HIGH();
+    tm1638_apply_output();
     tm1638_delay(timing_delay * 2);
     
     /* Paso 4: Configurar modo de datos (auto-increment) */
-    PORT_SALIDA = TM_STB_LOW();
+    TM_STB_LOW();
+    tm1638_apply_output();
     tm1638_send_cmd(0x40);  /* Auto-increment mode */
-    PORT_SALIDA = TM_STB_HIGH();
+    TM_STB_HIGH();
+    tm1638_apply_output();
     tm1638_delay(timing_delay * 2);
     
 
-    PORT_SALIDA = TM_STB_LOW();
+    TM_STB_LOW();
+    tm1638_apply_output();
     tm1638_send_cmd(0xC0);  /* Address 0xC0 (start) */
         
     /* Escribir 16 bytes de ceros */
@@ -593,7 +649,8 @@ void tm1638_init(void) {
         tm1638_write_byte(0x00);
     }
         
-    PORT_SALIDA = TM_STB_HIGH();
+    TM_STB_HIGH();
+    tm1638_apply_output();
     tm1638_delay(timing_delay * 3);
 
     /* Paso 6: Encender display con brillo medio */
@@ -612,18 +669,21 @@ void tm1638_display_with_brightness(const uint8_t* disps, uint8_t brightness) {
 
     /* Inicialización optimizada de líneas de control */
     tmp_salida |= (TM_CLK_MASK | TM_STB_MASK);  /* CLK y STB HIGH simultáneamente */
-    PORT_SALIDA = tmp_salida;
+    tm1638_apply_output();
     tm1638_delay(timing_delay);
 
     /* Comando auto-increment */
-    PORT_SALIDA = TM_STB_LOW();
+    TM_STB_LOW();
+    tm1638_apply_output();
     tm1638_delay(timing_delay);
     tm1638_send_cmd(0x40);
-    PORT_SALIDA = TM_STB_HIGH();
+    TM_STB_HIGH();
+    tm1638_apply_output();
     tm1638_delay(timing_delay);
     
     /* Comando dirección inicial */
-    PORT_SALIDA = TM_STB_LOW();
+    TM_STB_LOW();
+    tm1638_apply_output();
     tm1638_send_cmd(0xC0);
 
     /* Bucle optimizado - elimina branches y reduce accesos al array */
@@ -634,7 +694,8 @@ void tm1638_display_with_brightness(const uint8_t* disps, uint8_t brightness) {
     }
 
     /* Activación final del display con brillo personalizado */
-    PORT_SALIDA = TM_STB_HIGH();
+    TM_STB_HIGH();
+    tm1638_apply_output();
     tm1638_delay(timing_delay);
     
     /* Usar brillo especificado */
@@ -660,9 +721,11 @@ void tm1638_set_brightness(uint8_t brightness) {
     brightness_cmd = 0x88 + brightness;
     
     /* Enviar comando de brillo */
-    PORT_SALIDA = TM_STB_LOW();
+    TM_STB_LOW();
+    tm1638_apply_output();
     tm1638_send_cmd(brightness_cmd);
-    PORT_SALIDA = TM_STB_HIGH();
+    TM_STB_HIGH();
+    tm1638_apply_output();
     tm1638_delay(timing_delay);
 }
 
@@ -680,12 +743,14 @@ uint32_t tm1638_read_keys(void) {
     uint8_t byte_val;
     
     /* Iniciar comunicación */
-    PORT_SALIDA = TM_CLK_HIGH();
-    PORT_SALIDA = TM_STB_HIGH();
+    TM_CLK_HIGH();
+    TM_STB_HIGH();
+    tm1638_apply_output();
     tm1638_delay(timing_delay);
     
     /* Comando de lectura de teclas */
-    PORT_SALIDA = TM_STB_LOW();
+    TM_STB_LOW();
+    tm1638_apply_output();
     tm1638_delay(timing_delay);
     tm1638_send_cmd(0x42); /* Comando de lectura de teclas */
     
@@ -695,7 +760,8 @@ uint32_t tm1638_read_keys(void) {
         keys |= ((uint32_t)byte_val << (i * 8));
     }
     
-    PORT_SALIDA = TM_STB_HIGH();
+    TM_STB_HIGH();
+    tm1638_apply_output();
     tm1638_delay(timing_delay);
     
     return keys;

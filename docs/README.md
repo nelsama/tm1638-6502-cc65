@@ -8,14 +8,17 @@ Librería profesional y completa para módulos TM1638 con características avanz
 - ✅ **Control de Brillo Inteligente**: Gestión automática y persistente del brillo
 - ✅ **API Simplificada**: Funciones todo-en-uno para uso inmediato
 - ✅ **Mapeo QYF-TM1638**: Soporte completo y probado para hardware QYF-TM1638
+- ✅ **Aislamiento de pines**: Solo controla los bits CLK/DIO/STB, sin afectar otras señales del puerto
 - ✅ **Modular**: Funciones separadas para máxima flexibilidad
 - ✅ **Robusta**: Inicialización resistente a estados residuales
+- ✅ **Probada**: Banco de pruebas automático bajo simulador sim65
 
 ## 📁 Archivos
 
 - **`tm1638.c`** - Implementación principal (~700 líneas, completamente optimizada)
 - **`MANUAL_TM1638.md`** - Manual completo con ejemplos y referencia completa
 - **`ANTI_GHOSTING_NOTES.md`** - Documentación técnica anti-ghosting
+- **`PIN_ISOLATION_AND_NOISE.md`** - Aislamiento de pines y reducción de ruido en audio
 - **`tm1638_working.backup`** - Backup de versión anterior (histórico)
 
 ## 🚀 Uso Ultra-Rápido (API v2.0)
@@ -25,7 +28,7 @@ Librería profesional y completa para módulos TM1638 con características avanz
 
 void main(void) {
     /* ========== CONFIGURACIÓN (3 LÍNEAS) ========== */
-    CONF_PORT_SALIDA = 0b00000000;        // TM1638 como salidas
+    CONF_PORT_SALIDA = 0b00000000;        // TM1638 como salidas (puerto en exclusiva)
     tm1638_init();                        // Inicialización robusta anti-ghosting
     tm1638_set_brightness(4);             // Brillo medio persistente
     
@@ -55,6 +58,20 @@ tm1638_clear_display();                // Limpiar display
 tm1638_set_brightness(0-7);            // Brillo (0=mín, 7=máx)
 uint8_t key = tm1638_get_key_pressed(); // Teclado QYF-TM1638
 ```
+
+### Configuración del puerto según tu hardware
+
+La línea `CONF_PORT_SALIDA` que configura CLK/STB como salida admite dos formas:
+
+```c
+/* Si el puerto 0xC000 es exclusivo del TM1638 */
+CONF_PORT_SALIDA = 0b00000000;
+
+/* Si el puerto se comparte con audio, LEDs u otras señales */
+CONF_PORT_SALIDA &= ~TM1638_PINS_MASK;   /* solo los bits 0-2 como salida */
+```
+
+El driver solo modifica los bits 0-2 de `PORT_SALIDA`, así que compartir ese byte es seguro. Ver [`MANUAL_TM1638.md`](MANUAL_TM1638.md) para el detalle completo.
 
 ## 📚 Documentación
 

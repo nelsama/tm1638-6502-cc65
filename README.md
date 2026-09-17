@@ -44,6 +44,24 @@ Por defecto, la librería asume que el TM1638 está conectado al **puerto 0xC000
 
 Si tu hardware usa otro puerto o bits diferentes, revisa los `#define` correspondientes en `tm1638.h` y ajústalos a tu placa.
 
+### ⚠️ Puertos compartidos con otras señales
+
+El driver **solo controla los 3 bits del TM1638** (CLK/DIO/STB). Los bits 3-7 del mismo puerto quedan intactos, así que puedes compartir ese byte con audio, video, LEDs u otras señales sin que el display las perturbe.
+
+Al configurar el puerto, elige la forma según tu hardware:
+
+```c
+/* Si el TM1638 usa el puerto en exclusiva */
+CONF_PORT_SALIDA = 0b00000000;
+
+/* Si el puerto se comparte con otras señales */
+CONF_PORT_SALIDA &= ~TM1638_PINS_MASK;   /* solo los bits 0-2 del TM1638 */
+```
+
+Escribir `CONF_PORT_SALIDA = 0b00000000` con un puerto compartido afectaría a las señales que ocupen ese byte, incluido el audio.
+
+Si el display inyecta ruido en el audio, consulta [`docs/PIN_ISOLATION_AND_NOISE.md`](docs/PIN_ISOLATION_AND_NOISE.md).
+
 ## 🚀 Instalación Rápida (3 pasos)
 
 ### 1️⃣ Descargar Librería
@@ -106,9 +124,11 @@ lib_tm1638_standalone/
 |----------------|--------|-------------|
 | **🚫 Anti-Ghosting** | ✅ COMPLETO | Eliminación total de segmentos fantasma |
 | **💡 Brillo Inteligente** | ✅ COMPLETO | Persistente, gestión automática |
+| **🔌 Aislamiento de pines** | ✅ COMPLETO | Solo controla CLK/DIO/STB del puerto |
 | **🔧 API Dual** | ✅ COMPLETO | Simple para principiantes + Modular para expertos |
 | **🎮 QYF-TM1638** | ✅ COMPLETO | Mapeo específico del hardware probado |
 | **⚡ C89 Estricto** | ✅ COMPLETO | Compatible CC65, sin warnings |
+| **🧪 Banco de pruebas** | ✅ COMPLETO | Verificación automática con sim65 |
 | **📦 Portable** | ✅ COMPLETO | Fácil integración en cualquier proyecto |
 | **📚 Documentado** | ✅ COMPLETO | Manual completo con ejemplos |
 
@@ -146,6 +166,7 @@ tm1638_display(grids);                         // Solo mostrar
 | [`docs/README.md`](docs/README.md) | Documentación técnica de la librería | Desarrolladores |
 | [`docs/MANUAL_TM1638.md`](docs/MANUAL_TM1638.md) | Manual completo con ejemplos | Todos los usuarios |
 | [`docs/ANTI_GHOSTING_NOTES.md`](docs/ANTI_GHOSTING_NOTES.md) | Notas técnicas anti-ghosting | Técnicos avanzados |
+| [`docs/PIN_ISOLATION_AND_NOISE.md`](docs/PIN_ISOLATION_AND_NOISE.md) | Aislamiento de pines y ruido en audio | Técnicos avanzados |
 | [`examples/basic_example.c`](examples/basic_example.c) | Ejemplo básico funcional | Principiantes |
 | [`examples/advanced_example.c`](examples/advanced_example.c) | Ejemplo API modular | Usuarios avanzados |
 
@@ -160,6 +181,9 @@ make all
 
 # Compilar ejemplos
 make examples
+
+# Ejecutar banco de pruebas (requiere cc65 con sim65)
+make test
 
 # Instalar en proyecto
 make install DEST_DIR=ruta_a_tu_proyecto

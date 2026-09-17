@@ -34,8 +34,62 @@
 
 
 
-// Parámetro de timing para delays del TM1638
+/* Parámetro de timing para delays del TM1638.
+ *
+ * Controla la pausa entre flancos de CLK/DIO/STB. Con 0 la conmutación es muy
+ * rápida (pocos ciclos de CPU), lo que puede inyectar ruido audible en sistemas
+ * donde el puerto comparte pines con audio. El TM1638 tolera velocidades mucho
+ * menores: subir este valor (por ejemplo 8-20) reduce la frecuencia de
+ * conmutación y con ella el ruido.
+ *
+ * Se deja en 0 por defecto para no alterar el rendimiento de las aplicaciones
+ * existentes. Cada proyecto puede sobrescribirlo sin tocar la librería:
+ *   - En el Makefile:  CFLAGS += -Dtiming_delay=12
+ *   - Antes del include:
+ *         #define timing_delay 12
+ *         #include "tm1638.h"
+ *
+ * Ver docs/PIN_ISOLATION_AND_NOISE.md para más detalle.
+ */
+#ifndef timing_delay
 #define timing_delay 0
+#endif
+
+/* Bits del puerto que pertenecen al TM1638 (CLK, DIO, STB).
+ *
+ * En binario para que sea evidente qué pata ocupa cada bit, de acuerdo con el
+ * mapeo por defecto:
+ *
+ *     bit 2 1 0
+ *         0b0 0 0 0 0 1 1 1
+ *           | | | | | | | +-- CLK
+ *           | | | | | | +---- DIO
+ *           | | | | | +------ STB
+ *           | | | | +-------- libres (audio, LEDs, etc.)
+ *
+ * Uso con puertos compartidos:
+ *     CONF_PORT_SALIDA &= ~TM1638_PINS_MASK;
+ *
+ * En lugar de escribir el registro completo, lo que afectaría a las demás patas.
+ */
+#define TM1638_PINS_MASK  0b00000111
+
+/* TODO: auto-configurar CLK/STB en tm1638_init().
+ *
+ * Hoy la librería solo alterna el bit DIO en CONF_PORT_SALIDA (es bidireccional:
+ * entrada para el teclado, salida para escribir), y deja que la aplicación
+ * configure CLK y STB como salida. Si el usuario olvida esa línea, el display
+ * no responde.
+ *
+ * Sería más robusto que tm1638_init() hiciera:
+ *     CONF_PORT_SALIDA &= ~(TM_CLK_MASK | TM_STB_MASK);
+ *
+ * Es idempotente para las apps que ya configuran el puerto, pero cambia el
+ * binario de la librería: una app que a propósito tuviera CLK/STB como entrada
+ * se vería afectada. Pendiente de decidir si se asume ese riesgo.
+ *
+ * Ver docs/PIN_ISOLATION_AND_NOISE.md
+ */
 
 /* ============================================================================
  * FUNCIONES DE CODIFICACIÓN Y DISPLAY

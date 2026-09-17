@@ -76,11 +76,7 @@ void demo_custom_characters(void) {
     uint8_t segments[8];
     uint8_t grids[8];
     uint8_t i;
-    
-    tm1638_show_text(" CUSTOM ");
-    tm1638_delay(1500);
-    
-    /* Crear patrón personalizado (ejemplo: barras animadas) */
+    /* C89: las declaraciones deben ir antes de cualquier sentencia */
     uint8_t patterns[] = {
         0b00000001,  /* Segmento A */
         0b00000010,  /* Segmento B */
@@ -91,6 +87,9 @@ void demo_custom_characters(void) {
         0b01000000,  /* Segmento G */
         0b00000000   /* Apagado */
     };
+    
+    tm1638_show_text(" CUSTOM ");
+    tm1638_delay(1500);
     
     /* Animar patrón en todos los dígitos */
     for (i = 0; i < 8; i++) {
