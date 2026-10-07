@@ -124,6 +124,10 @@ void tm1638_display_with_brightness(const uint8_t* grids, uint8_t brightness);
 void tm1638_clear_display(void);
 void tm1638_set_brightness(uint8_t brightness);
 
+// Encendido y apagado del display (los datos se conservan)
+void tm1638_display_off(void);
+void tm1638_display_on(void);
+
 /* ============================================================================
  * FUNCIONES DE TECLADO
  * ============================================================================ */

@@ -56,6 +56,8 @@ tm1638_show_number(12345678);          // Número entero
 tm1638_show_hex(hex_array);            // Hexadecimal
 tm1638_clear_display();                // Limpiar display
 tm1638_set_brightness(0-7);            // Brillo (0=mín, 7=máx)
+tm1638_display_off();                  // Apagar pantalla (conserva datos)
+tm1638_display_on();                   // Encender con brillo actual
 uint8_t key = tm1638_get_key_pressed(); // Teclado QYF-TM1638
 ```
 

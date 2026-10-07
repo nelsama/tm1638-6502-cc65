@@ -313,6 +313,44 @@ void tm1638_clear_display(void);
 tm1638_clear_display();  /* Apagar todos los segmentos */
 ```
 
+### 8. `tm1638_display_off()`
+**Propósito**: Apaga la pantalla del TM1638 (comando `0x80`).
+
+```c
+void tm1638_display_off(void);
+```
+
+Los datos en memoria **se conservan**: al volver a encender con
+`tm1638_display_on()` se muestra de nuevo el contenido anterior, sin
+necesidad de repintarlo. No confundir con `tm1638_clear_display()`, que sí
+borra el contenido.
+
+Es útil para eliminar la conmutación del módulo en momentos en que su ruido
+pueda acoplarse a otra señal (por ejemplo, una salida de audio).
+
+**Ejemplo**:
+```c
+tm1638_show_text(" PLAY   ");
+tm1638_display_off();
+reproducir_audio();        /* sin actividad del display */
+tm1638_display_on();       /* vuelve el texto anterior */
+```
+
+### 9. `tm1638_display_on()`
+**Propósito**: Enciende la pantalla con el brillo que tenía configurado.
+
+```c
+void tm1638_display_on(void);
+```
+
+Reenvía el brillo guardado (comando `0x88 | nivel`, con nivel 0-7), de modo
+que el display recupera el estado previo a `tm1638_display_off()`.
+
+**Ejemplo**:
+```c
+tm1638_display_on();     /* encender con el brillo actual */
+```
+
 ---
 
 ## ⌨️ Funciones de Teclado

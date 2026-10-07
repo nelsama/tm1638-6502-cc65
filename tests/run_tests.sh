@@ -59,9 +59,10 @@ echo ""
 ejecutar "test_port_isolation"  "test_port_isolation.c"
 ejecutar "test_control_bits"    "test_control_bits.c"
 ejecutar "test_dio_config"      "test_dio_config.c"
+ejecutar "test_display_onoff"   "test_display_onoff.c"
 echo ""
 
-rm -f test_port_isolation.prg test_control_bits.prg test_dio_config.prg
+rm -f test_port_isolation.prg test_control_bits.prg test_dio_config.prg test_display_onoff.prg
 
 if [ "$FALLOS" -eq 0 ]; then
     echo "RESULTADO: todos los tests pasan"

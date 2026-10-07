@@ -729,6 +729,38 @@ void tm1638_set_brightness(uint8_t brightness) {
     tm1638_delay(timing_delay);
 }
 
+/**
+ * @brief Apaga el display TM1638 (comando 0x80)
+ *
+ * Los datos en memoria se conservan: al volver a encender con
+ * tm1638_display_on() se muestra de nuevo el contenido anterior.
+ *
+ * Útil para silenciar la actividad de conmutación del módulo durante
+ * periodos en los que su ruido pueda acoplarse a otra señal (por ejemplo
+ * una salida de audio).
+ */
+void tm1638_display_off(void) {
+    TM_STB_LOW();
+    tm1638_apply_output();
+    tm1638_send_cmd(0x80);  /* Display OFF */
+    TM_STB_HIGH();
+    tm1638_apply_output();
+}
+
+/**
+ * @brief Enciende el display TM1638 con el brillo actual
+ *
+ * Reenvía el brillo guardado (comando 0x88 | nivel, con nivel 0-7), de modo
+ * que el display recupera el estado previo a tm1638_display_off().
+ */
+void tm1638_display_on(void) {
+    TM_STB_LOW();
+    tm1638_apply_output();
+    tm1638_send_cmd((uint8_t)(0x88 | current_brightness));
+    TM_STB_HIGH();
+    tm1638_apply_output();
+}
+
 /* ============================================================================
  * FUNCIONES DE TECLADO
  * ============================================================================ */

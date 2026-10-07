@@ -111,6 +111,37 @@ Las aplicaciones que no definan nada mantienen el comportamiento original
 Valores de partida sugeridos: `8` a `20`. El límite práctico depende de la
 frecuencia de CPU y de qué tan rápido refresques el display.
 
+### Apagar el display durante el audio
+
+La medida más directa: apagar el módulo mientras suena el audio elimina por
+completo su conmutación en los momentos críticos. El TM1638 tiene un comando
+específico para esto (`0x80`), expuesto como dos funciones:
+
+```c
+tm1638_display_off();   /* apaga el display */
+/* ... reproducir audio ... */
+tm1638_display_on();    /* enciende con el brillo que tenía */
+```
+
+Los datos en memoria **se conservan**: al reencender aparece de nuevo el
+contenido anterior, sin necesidad de repintarlo. No confundir con
+`tm1638_clear_display()`, que sí borra el contenido.
+
+Ejemplo de uso alrededor de un fragmento de audio:
+
+```c
+tm1638_show_text(" PLAY   ");
+tm1638_delay(500);
+
+tm1638_display_off();
+reproducir_audio();        /* sin ruido del display */
+tm1638_display_on();
+
+tm1638_show_text(" DONE   ");
+```
+
+Coste: 37 bytes de ROM, 0 de RAM, 0 de stack.
+
 ### Otras medidas
 
 - **Configura el puerto de forma no invasiva.** En lugar de escribir el
@@ -127,14 +158,22 @@ frecuencia de CPU y de qué tan rápido refresques el display.
   los 16 bytes completos en cada llamada. Llamarlo dentro de un lazo genera
   tráfico continuo e innecesario.
 
-- **Apaga el display durante la reproducción de audio** con el comando
-  `0x80`, y vuelve a encenderlo después. Elimina la conmutación por completo
-  en los momentos críticos.
-
 - **A nivel de hardware**, una resistencia en serie de 100 Ω en CLK/DIO/STB
   y una alimentación separada para el módulo TM1638 reducen el acoplamiento.
   Conviene recordar que el propio módulo QYF-TM1638, al multiplexar 8 dígitos,
   es una fuente de ruido de alimentación por sí mismo.
+
+### Combinar medidas
+
+Las tres palancas actúan sobre factores distintos, así que conviene probarlas
+por separado para saber cuál pesa más en cada montaje:
+
+| Medida | Actúa sobre | Requiere recompilar |
+|---|---|---|
+| Aislamiento de pines | Patas ajenas del puerto | No (ya aplicado) |
+| `display_off` / `display_on` | Conmutación durante el audio | No |
+| `timing_delay` | Frecuencia de conmutación | Sí (`-D`) |
+| Hardware (serie, alimentación) | Acoplamiento físico | — |
 
 ## Verificación
 

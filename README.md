@@ -99,6 +99,17 @@ void main(void) {
 }
 ```
 
+### 🔇 Apagar la pantalla
+
+Si el display inyecta ruido en otra señal (por ejemplo audio), se puede apagar
+mientras esa señal está activa. Los datos se conservan:
+
+```c
+tm1638_display_off();    // apaga
+/* ... reproducir audio ... */
+tm1638_display_on();     // enciende con el brillo que tenía
+```
+
 ## 📁 Estructura de la Librería
 
 ```
@@ -110,10 +121,17 @@ lib_tm1638_standalone/
 ├── docs/
 │   ├── README.md               # ✅ Documentación de la librería
 │   ├── MANUAL_TM1638.md        # ✅ Manual completo de usuario
-│   └── ANTI_GHOSTING_NOTES.md  # ✅ Notas técnicas anti-ghosting
+│   ├── ANTI_GHOSTING_NOTES.md  # ✅ Notas técnicas anti-ghosting
+│   └── PIN_ISOLATION_AND_NOISE.md  # ✅ Aislamiento de pines y ruido
 ├── examples/
 │   ├── basic_example.c         # ✅ Ejemplo para principiantes
 │   └── advanced_example.c      # ✅ Ejemplo API modular
+├── tests/
+│   ├── run_tests.sh            # ✅ Ejecutor del banco de pruebas
+│   ├── README.md               # ✅ Cómo ejecutar las pruebas
+│   ├── test_port_isolation.c   # ✅ Aislamiento de pines
+│   ├── test_control_bits.c     # ✅ Control de CLK/DIO/STB
+│   └── test_dio_config.c       # ✅ Configuración de DIO
 ├── Makefile                    # ✅ Compilación y gestión
 └── README.md                   # ✅ Esta documentación
 ```
@@ -125,6 +143,7 @@ lib_tm1638_standalone/
 | **🚫 Anti-Ghosting** | ✅ COMPLETO | Eliminación total de segmentos fantasma |
 | **💡 Brillo Inteligente** | ✅ COMPLETO | Persistente, gestión automática |
 | **🔌 Aislamiento de pines** | ✅ COMPLETO | Solo controla CLK/DIO/STB del puerto |
+| **🔇 Apagado del display** | ✅ COMPLETO | Conserva datos, útil contra ruido |
 | **🔧 API Dual** | ✅ COMPLETO | Simple para principiantes + Modular para expertos |
 | **🎮 QYF-TM1638** | ✅ COMPLETO | Mapeo específico del hardware probado |
 | **⚡ C89 Estricto** | ✅ COMPLETO | Compatible CC65, sin warnings |
@@ -142,6 +161,8 @@ tm1638_set_brightness(4);               // Brillo persistente (0-7)
 tm1638_show_text(" HOLA   ");           // Texto automático (8 chars)
 tm1638_show_number(12345);              // Número automático
 tm1638_clear_display();                 // Limpiar (mantiene brillo)
+tm1638_display_off();                   // Apagar pantalla (conserva datos)
+tm1638_display_on();                    // Encender con brillo actual
 
 // ==================== TECLADO ====================
 uint8_t key = tm1638_get_key_pressed(); // Leer tecla (1-16, 0=ninguna)
